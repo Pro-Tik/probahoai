@@ -23,9 +23,12 @@ async function syncCookies() {
         return;
     }
 
-    const cookies = await chrome.cookies.getAll({ url: GEMINI_URL });
+    // Search for cookies across .google.com to be sure
+    const cookies = await chrome.cookies.getAll({ domain: ".google.com" });
     const psid = cookies.find(c => c.name === "__Secure-1PSID")?.value;
     const psidts = cookies.find(c => c.name === "__Secure-1PSIDTS")?.value;
+
+    console.log("Probaho Sync: Found cookies?", !!psid, !!psidts);
 
     if (psid && psidts) {
         try {

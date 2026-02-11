@@ -70,6 +70,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Simple shared state for progress (In a real app, use Redis or similar)
 jobs = {}
+LAST_SYNC_TIME = "Never"
 
 class JobStatus(BaseModel):
     job_id: str
@@ -164,9 +165,13 @@ class CookieUpdate(BaseModel):
 async def sync_cookies(data: CookieUpdate, api_key: str = Depends(get_api_key)):
     """Secure endpoint for browser extension to sync cookies"""
     try:
+        from datetime import datetime
+        sync_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         save_cookies(data.psid, data.psidts)
-        logger.success("Cookies updated via sync API")
-        return {"status": "success", "message": "Cookies updated and persisted"}
+        logger.success(f"Cookies updated via sync API at {sync_time}")
+        global LAST_SYNC_TIME
+        LAST_SYNC_TIME = sync_time
+        return {"status": "success", "message": f"Cookies updated and persisted at {sync_time}"}
     except Exception as e:
         logger.error(f"Sync error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
