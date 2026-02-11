@@ -8,7 +8,6 @@ venv/
 # App Specific
 uploads/
 output_product_set/
-requirements.txt
 
 # Docker
 .docker/
