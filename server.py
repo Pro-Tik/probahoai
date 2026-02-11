@@ -89,7 +89,8 @@ async def run_generation_task(job_id: str, file_paths: List[Path]):
         # Create a fresh generator for each job to ensure clean session (matches img.py pattern)
         job_generator = GeminiImageGenerator(
             psid=cookies.get("GEMINI_1PSID"),
-            psidts=cookies.get("GEMINI_1PSIDTS")
+            psidts=cookies.get("GEMINI_1PSIDTS"),
+            proxy=os.getenv("GEMINI_PROXY")
         )
         await job_generator.init_client()
 

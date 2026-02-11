@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: probaho-studio
+    runtime: docker
+    plan: free
+    envVars:
+      - key: MASTER_API_KEY
+        sync: false
+      - key: GEMINI_1PSID
+        sync: false
+      - key: GEMINI_1PSIDTS
+        sync: false
+      - key: GEMINI_PROXY
+        sync: false
+    disk:
+      name: probaho-data
+      mountPath: /app/data
+      sizeGB: 1

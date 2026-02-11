@@ -11,6 +11,7 @@ load_dotenv()
 # --- Configuration (Defaults) ---
 SECURE_1PSID = os.getenv("GEMINI_1PSID") or os.getenv("1PSID") or os.getenv("SECURE_1PSID")
 SECURE_1PSIDTS = os.getenv("GEMINI_1PSIDTS") or os.getenv("1PSIDTS") or os.getenv("SECURE_1PSIDTS")
+GEMINI_PROXY = os.getenv("GEMINI_PROXY")
 
 STYLE_PROMPT = """
 STYLE GUIDELINES:
@@ -33,18 +34,28 @@ SHOT_LIST = [
 ]
 
 class GeminiImageGenerator:
-    def __init__(self, psid=None, psidts=None):
+    def __init__(self, psid=None, psidts=None, proxy=None):
         self.psid = psid or SECURE_1PSID
         self.psidts = psidts or SECURE_1PSIDTS
+        self.proxy = proxy or GEMINI_PROXY
         self.client = None
 
     async def init_client(self):
         if not self.psid or not self.psidts:
+            logger.error("Missing cookies: GEMINI_1PSID or GEMINI_1PSIDTS not provided.")
             raise ValueError("GEMINI_1PSID and GEMINI_1PSIDTS must be set.")
         
-        self.client = GeminiClient(self.psid, self.psidts)
-        await self.client.init(timeout=60, auto_close=True, close_delay=300, auto_refresh=True)
-        return self.client
+        logger.info(f"Initializing GeminiClient with Proxy: {self.proxy if self.proxy else 'None'}")
+        try:
+            self.client = GeminiClient(self.psid, self.psidts, proxy=self.proxy)
+            await self.client.init(timeout=60, auto_close=True, close_delay=300, auto_refresh=True)
+            logger.success("GeminiClient initialized successfully.")
+            return self.client
+        except Exception as e:
+            logger.error(f"GeminiClient initialization FAILED: {str(e)}")
+            if "expired" in str(e).lower():
+                logger.warning("Cookie expiration detected. Please refresh Gemini in your browser and sync.")
+            raise e
 
     async def generate_for_image(self, input_image_path: Path, output_dir: Path, progress_callback=None):
         """Generates all shots for a single input image."""
