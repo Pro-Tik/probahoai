@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "Probaho Sync",
+    "version": "1.0",
+    "description": "Automatically syncs Gemini cookies to the Probaho Studio server.",
+    "permissions": [
+        "cookies",
+        "storage",
+        "alarms"
+    ],
+    "host_permissions": [
+        "https://gemini.google.com/*",
+        "http://localhost/*",
+        "https://*.onrender.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_popup": "popup.html"
+    }
+}

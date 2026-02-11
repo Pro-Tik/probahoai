@@ -6,6 +6,7 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./output_product_set:/app/output_product_set
+      - ./config.json:/app/config.json
     env_file:
       - .env
     restart: unless-stopped

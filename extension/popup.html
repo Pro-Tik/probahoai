@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            width: 220px;
+            padding: 15px;
+            font-family: sans-serif;
+            background: #0f172a;
+            color: white;
+        }
+
+        input {
+            width: 100%;
+            margin: 8px 0;
+            padding: 8px;
+            box-sizing: border-box;
+            border-radius: 4px;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin-top: 0;
+            color: #60a5fa;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Probaho Sync</h2>
+    <label>Server URL (e.g., https://app.render.com)</label>
+    <input type="text" id="serverUrl" placeholder="https://...">
+    <label>Master API Key</label>
+    <input type="password" id="apiKey">
+    <button id="save">Save & Sync Now</button>
+    <p id="status" style="font-size:11px; margin-top:10px;"></p>
+    <script src="popup.js"></script>
+</body>
+
+</html>

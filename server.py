@@ -17,7 +17,28 @@ from fastapi import Security, Depends, status
 # Load .env file
 load_dotenv()
 
+CONFIG_FILE = Path("config.json")
 MASTER_API_KEY = os.getenv("MASTER_API_KEY", "probaho_master_secret")
+
+def load_cookies():
+    """Load cookies from config.json or fallback to .env"""
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading config.json: {e}")
+    
+    return {
+        "GEMINI_1PSID": os.getenv("GEMINI_1PSID"),
+        "GEMINI_1PSIDTS": os.getenv("GEMINI_1PSIDTS")
+    }
+
+def save_cookies(psid: str, psidts: str):
+    """Save updated cookies to config.json"""
+    with open(CONFIG_FILE, "w") as f:
+        json.dump({"GEMINI_1PSID": psid, "GEMINI_1PSIDTS": psidts}, f)
+
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
@@ -62,8 +83,14 @@ async def run_generation_task(job_id: str, file_paths: List[Path]):
     all_results = []
     
     try:
+        # Load latest cookies (from config or env)
+        cookies = load_cookies()
+        
         # Create a fresh generator for each job to ensure clean session (matches img.py pattern)
-        job_generator = GeminiImageGenerator()
+        job_generator = GeminiImageGenerator(
+            psid=cookies.get("GEMINI_1PSID"),
+            psidts=cookies.get("GEMINI_1PSIDTS")
+        )
         await job_generator.init_client()
 
         total_files = len(file_paths)
@@ -127,6 +154,21 @@ async def get_status(job_id: str, api_key: str = Depends(get_api_key)):
 @app.get("/ping")
 async def ping():
     return {"status": "alive", "message": "pong"}
+
+class CookieUpdate(BaseModel):
+    psid: str
+    psidts: str
+
+@app.post("/admin/sync-cookies")
+async def sync_cookies(data: CookieUpdate, api_key: str = Depends(get_api_key)):
+    """Secure endpoint for browser extension to sync cookies"""
+    try:
+        save_cookies(data.psid, data.psidts)
+        logger.success("Cookies updated via sync API")
+        return {"status": "success", "message": "Cookies updated and persisted"}
+    except Exception as e:
+        logger.error(f"Sync error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Mount static files (MUST BE LAST to avoid shadowing routes)
 app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
