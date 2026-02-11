@@ -8,6 +8,8 @@ venv/
 # App Specific
 uploads/
 output_product_set/
+input/
+output/
 
 # Docker
 .docker/
