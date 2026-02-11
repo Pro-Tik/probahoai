@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble Pop - Relaxing Loader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+            font-family: 'Nunito', sans-serif;
+            /* Soft, rounded font */
+            user-select: none;
+            touch-action: none;
+            /* Prevent scrolling on mobile */
+        }
+
+        /* The Game Area */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>') 12 12, auto;
+        }
+
+        /* Bubble Styling */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.1));
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Shine effect */
+        }
+
+        .bubble::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            width: 25%;
+            height: 15%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            transform: rotate(-45deg);
+        }
+
+        /* Pop Animation */
+        .popped {
+            pointer-events: none;
+            animation: pop-anim 0.2s ease-out forwards;
+        }
+
+        @keyframes pop-anim {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.4);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1.8);
+                opacity: 0;
+            }
+        }
+
+        /* Glassmorphism UI */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        /* Floating Text Animation */
+        .float-text {
+            position: absolute;
+            pointer-events: none;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            animation: float-up 1s ease-out forwards;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes float-up {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-50px) scale(1.2);
+                opacity: 0;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Main Game Container -->
+    <div id="game-container">
+        <!-- UI Overlay: Simplified Score -->
+        <div class="absolute top-4 right-6 pointer-events-none z-50">
+            <div class="glass-panel px-6 py-2 rounded-full flex flex-col items-center">
+                <div class="text-white/60 text-[10px] font-bold uppercase tracking-wider">Score</div>
+                <div id="score-display" class="text-2xl font-black text-white leading-none">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completion Screen -->
+    <div id="content-screen"
+        class="hidden fixed inset-0 bg-indigo-900 z-[100] flex items-center justify-center flex-col text-center p-8 transition-opacity duration-500 opacity-0">
+        <div class="glass-panel p-10 rounded-3xl max-w-md w-full border-white/30">
+            <div class="text-6xl mb-4 animate-bounce">🧘‍♀️</div>
+            <h2 class="text-4xl font-black text-white mb-2">You're Ready.</h2>
+            <p class="text-indigo-200 mb-8 text-lg">Content loaded. Stress reduced.</p>
+
+            <div class="bg-black/20 rounded-xl p-4 mb-8">
+                <div class="text-sm text-indigo-300 uppercase tracking-widest font-bold mb-1">Total Pops</div>
+                <div id="final-score" class="text-5xl font-black text-white">0</div>
+            </div>
+
+            <button onclick="parent.postMessage('hideLoader', '*')"
+                class="w-full bg-white text-indigo-900 font-bold py-4 px-8 rounded-xl hover:bg-indigo-50 hover:scale-[1.02] transition-all shadow-lg text-lg">
+                Enter Website
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const GAME_DURATION_MS = 12000; // 12 seconds load
+        const SPAWN_RATE = 200; // ms between bubbles
+        const GRAVITY_SPEED = 1.5; // Base upward speed
+
+        // --- State ---
+        let score = 0;
+        let progress = 0;
+        let gameActive = true;
+        let container = document.getElementById('game-container');
+        let isMouseDown = false;
+
+        // --- Elements ---
+        const scoreDisplay = document.getElementById('score-display');
+        const progressBar = document.getElementById('progress-bar');
+        const percentDisplay = document.getElementById('percent-display');
+        const loadingText = document.getElementById('loading-text');
+        const contentScreen = document.getElementById('content-screen');
+        const finalScore = document.getElementById('final-score');
+
+        // --- Loading Messages ---
+        const messages = [
+            "The images are being cooked 🍳",
+            "It may take a moment ⏳",
+            "Until then, play this game of ours 🎮",
+            "The images are being cooked 🍳",
+            "Almost ready to serve! ✨"
+        ];
+
+        // --- Sound Effect (Synthesized Pop) ---
+        // Simple AudioContext beep to avoid external assets
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playPopSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.type = 'sine';
+            // Randomize pitch slightly for variety
+            oscillator.frequency.setValueAtTime(400 + Math.random() * 300, audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
+        // --- Bubble Logic ---
+        function createBubble() {
+            if (!gameActive) return;
+
+            const bubble = document.createElement('div');
+            bubble.classList.add('bubble');
+
+            // Random Size (20px to 80px)
+            const size = 20 + Math.random() * 60;
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+
+            // Random Color Tint (Subtle)
+            const hue = Math.random() * 360;
+            bubble.style.background = `radial-gradient(circle at 30% 30%, hsla(${hue}, 80%, 90%, 0.8), hsla(${hue}, 60%, 60%, 0.1))`;
+
+            // Start Position (Bottom, random X)
+            const startX = Math.random() * (window.innerWidth - size);
+            const startY = window.innerHeight + size;
+
+            bubble.style.left = `${startX}px`;
+            bubble.style.top = `${startY}px`;
+
+            // Interaction Handlers
+            const pop = (e) => {
+                if (bubble.dataset.popped) return;
+                bubble.dataset.popped = "true";
+
+                // Score
+                score++;
+                scoreDisplay.innerText = score;
+
+                // Visuals
+                bubble.classList.add('popped');
+                showFloatingText(e.clientX || e.touches?.[0].clientX, e.clientY || e.touches?.[0].clientY);
+                playPopSound();
+
+                // Remove from DOM quickly
+                setTimeout(() => bubble.remove(), 200);
+            };
+
+            // Mouse events
+            bubble.addEventListener('mousedown', pop);
+            bubble.addEventListener('mouseenter', (e) => {
+                if (isMouseDown) pop(e); // Drag to pop
+            });
+
+            // Touch events
+            bubble.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Stop scrolling
+                pop(e);
+            });
+
+            container.appendChild(bubble);
+
+            // Animate Upward
+            let currentY = startY;
+            const speed = 1 + Math.random() * 3; // Random speed
+            const wobbleSpeed = 0.02 + Math.random() * 0.03;
+            const wobbleAmp = Math.random() * 2;
+            let time = 0;
+
+            function animate() {
+                if (!gameActive || bubble.dataset.popped) return;
+
+                currentY -= speed;
+                time += 1;
+
+                // Add gentle wobble
+                const wobble = Math.sin(time * wobbleSpeed) * wobbleAmp;
+
+                bubble.style.top = `${currentY}px`;
+                bubble.style.transform = `translateX(${wobble}px)`;
+
+                // Remove if off screen top
+                if (currentY < -100) {
+                    bubble.remove();
+                } else {
+                    requestAnimationFrame(animate);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function showFloatingText(x, y) {
+            const el = document.createElement('div');
+            el.classList.add('float-text');
+            const texts = ["POP!", "Nice!", "Smooth", "Relax"];
+            el.innerText = texts[Math.floor(Math.random() * texts.length)];
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        // --- Input Handling for "Swipe" effect ---
+        window.addEventListener('mousedown', () => isMouseDown = true);
+        window.addEventListener('mouseup', () => isMouseDown = false);
+
+        // Touch "swipe" logic for mobile
+        window.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            // Check if touch is over any bubble
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && target.classList.contains('bubble')) {
+                // Manually trigger pop since mouseenter doesn't exist for touch
+                const event = new Event('touchstart');
+                target.dispatchEvent(event);
+            }
+        }, { passive: false });
+
+        // --- Game Loop ---
+        function updateProgress() {
+            if (!gameActive) return;
+
+            // Simple indefinite spawn logic
+            requestAnimationFrame(updateProgress);
+        }
+
+        function endGame() {
+            gameActive = false;
+            setTimeout(() => {
+                contentScreen.classList.remove('hidden');
+                // Trigger reflow
+                void contentScreen.offsetWidth;
+                contentScreen.style.opacity = "1";
+                finalScore.innerText = score;
+            }, 500);
+        }
+
+        // Listen for completion signal from parent
+        window.addEventListener('message', (event) => {
+            if (event.data === 'generationComplete') {
+                endGame();
+            }
+        });
+
+        // Start
+        setInterval(createBubble, SPAWN_RATE);
+        requestAnimationFrame(updateProgress);
+
+    </script>
+</body>
+
+</html>

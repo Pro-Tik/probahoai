@@ -1,0 +1,11 @@
+services:
+  probaho:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output_product_set:/app/output_product_set
+    env_file:
+      - .env
+    restart: unless-stopped
